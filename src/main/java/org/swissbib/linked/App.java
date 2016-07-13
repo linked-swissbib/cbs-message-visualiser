@@ -12,9 +12,9 @@ public class App {
     public static void main(String[] args) {
 
         final String metamorphDefinition = "src/main/resources/transformations/main.xml";
-        final String neo4jDbDirectory = "/home/seb/temp/tracker.db/databases/gnd.db";
 
-        String dbUri = args[0];
+        final String dbUri = args[0];
+        final String neo4jDbDirectory = "/home/seb/temp/tracker.db/databases/gnd.db";
 
         MfWorkflowWrapper mfWrapper = new MfWorkflowWrapper(metamorphDefinition, neo4jDbDirectory);
 

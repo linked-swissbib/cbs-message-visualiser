@@ -5,4 +5,4 @@ Tool for parsing a MongoDB containing messages from CBS and for indexing its con
 <code>mvn clean install shade:shade -Dmaven.test.skip=true</code>
 
 ## Run
-<code>java -jar target/original-cbs-message-visualiser-1.0-SNAPSHOT.jar mongodb://\<host\>:\<port\>/\<dbname\>/\<collection-name\></code>
+<code>java -jar target/original-cbs-message-visualiser-1.0-SNAPSHOT.jar mongodb://\<host\>:\<port\>/\<dbname\>/\<collection-name\> /path/to/neo4j/embedded/db </code>
