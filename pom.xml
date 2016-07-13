@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.swissbib.linked</groupId>
-    <artifactId>mfTests</artifactId>
+    <artifactId>cbs-message-visualiser</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <name>cbs-message-visualiser</name>
@@ -88,7 +88,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.5.3</version>
             </plugin>
-            
+
         </plugins>
 
     </build>
