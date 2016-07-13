@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metamorph xmlns="http://www.culturegraph.org/metamorph" version="1">
+
+    <include xmlns="http://www.w3.org/2001/XInclude" href="morphModules/authorHash100.xml" parse="xml"/>
+    <include xmlns="http://www.w3.org/2001/XInclude" href="morphModules/authorHash700.xml" parse="xml"/>
+    <include xmlns="http://www.w3.org/2001/XInclude" href="morphModules/authorHash710.xml" parse="xml"/>
+    <include xmlns="http://www.w3.org/2001/XInclude" href="morphModules/authorHash711.xml" parse="xml"/>
+
+    <rules>
+
+
+
+        <data source="001" name="id"/>
+
+        <data source="035  .a" name="locsig">
+            <regexp match="\((.*)\)(.*)" format="${1}/${2}"/>
+            <unique part="value"/>
+        </data>
+
+        <data name="person" source="@key1000">
+            <compose prefix="http://data.swissbib.ch/person/"/>
+        </data>
+
+        <data name="person" source="@key1001">
+            <compose prefix="http://data.swissbib.ch/person/"/>
+        </data>
+
+        <data name="organisation" source="@key7000">
+            <compose prefix="http://data.swissbib.ch/person/"/>
+        </data>
+
+        <data name="organisation" source="@key7001">
+            <compose prefix="http://data.swissbib.ch/person/"/>
+        </data>
+
+        <data name="organisation" source="@key710">
+            <compose prefix="http://data.swissbib.ch/organisation/"/>
+        </data>
+
+        <data name="organisation" source="@key711">
+            <compose prefix="http://data.swissbib.ch/organisation/"/>
+        </data>
+
+        <concat name="title" delimiter="">
+            <data source="245*.a"/>
+            <data source="245*.b">
+                <compose prefix=" : "/>
+            </data>
+            <data source="245*.n">
+                <compose prefix=". "/>
+            </data>
+            <data source="245*.p">
+                <compose prefix=". "/>
+            </data>
+        </concat>
+
+        <data name="work" source="986  .b"/>
+
+    </rules>
+
+</metamorph>
