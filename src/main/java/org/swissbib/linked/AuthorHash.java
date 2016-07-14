@@ -15,7 +15,7 @@ import java.util.List;
  * @author bensmafx, Gesis, Köln
  * @version 0.1
  */
-public class AuthorHash extends HashGenerator {
+class AuthorHash extends HashGenerator {
 
 
     private final static List<String> author1001x7001x;
