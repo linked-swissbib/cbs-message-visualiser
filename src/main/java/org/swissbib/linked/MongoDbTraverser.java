@@ -31,7 +31,7 @@ class MongoDbTraverser {
 
     MongoDbTraverser(String dbUri, MfWorkflowWrapper mfWrapper) {
         this.mfWrapper = mfWrapper;
-        Pattern pattern = Pattern.compile("^(mongodb://[a-zA-Z0-9.]*:\\d{2,5})/(\\w*)/(\\w*)$");
+        Pattern pattern = Pattern.compile("^(mongodb://.*:\\d{2,5})/(\\w*)/(\\w*)$");
         Matcher matcher = pattern.matcher(dbUri);
         if (matcher.find()) {
             mongoClient = new MongoClient(new MongoClientURI(matcher.group(1)));
@@ -49,7 +49,7 @@ class MongoDbTraverser {
     }
 
     void traverse() {
-        try (MongoCursor<Document> cursor = collection.find().sort(ascending("timestamp")).iterator()) {
+        try (MongoCursor<Document> cursor = collection.find().iterator()) {
             while (cursor.hasNext()) {
                 Document d = cursor.next();
                 LOG.debug("Sending document {} into Metafacture pipe.", d.get("id"));
