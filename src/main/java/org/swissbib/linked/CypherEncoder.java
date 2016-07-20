@@ -49,8 +49,8 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
             graphDb.schema().constraintFor(lsbLabels.ORGANISATION).assertPropertyIsUnique("id").create();
         if (!graphDb.schema().getIndexes(lsbLabels.RESOURCE).iterator().hasNext())
             graphDb.schema().indexFor(lsbLabels.RESOURCE).on("id").create();
-        if (!graphDb.schema().getIndexes(lsbLabels.LOCALSIGNATURE).iterator().hasNext())
-            graphDb.schema().constraintFor(lsbLabels.LOCALSIGNATURE).assertPropertyIsUnique("id").create();
+        if (!graphDb.schema().getIndexes(lsbLabels.SYSNO).iterator().hasNext())
+            graphDb.schema().constraintFor(lsbLabels.SYSNO).assertPropertyIsUnique("id").create();
         if (!graphDb.schema().getIndexes(lsbLabels.WORK).iterator().hasNext())
             graphDb.schema().constraintFor(lsbLabels.WORK).assertPropertyIsUnique("id").create();
         tx.success();
@@ -112,9 +112,9 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                 resourceNode.createRelationshipTo(workNode, lsbRelations.HASWORK);
                 LOG.debug("Create relation between resource-node {} and work-node {} ", resourceNode.getId(), workNode.getId());
                 break;
-            case "locsig":
-                Node locsigNode = mergeNode(lsbLabels.LOCALSIGNATURE, v);
-                resourceNode.createRelationshipTo(locsigNode, lsbRelations.HASLOCSIG);
+            case "sysno":
+                Node locsigNode = mergeNode(lsbLabels.SYSNO, v);
+                resourceNode.createRelationshipTo(locsigNode, lsbRelations.HASSYSNO);
                 LOG.debug("Create relation between resource-node {} and local-signature-node {} ", resourceNode.getId(), locsigNode.getId());
                 locSigs.add(v);
                 break;
@@ -170,7 +170,7 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
      * @return Query
      */
     static String createCypherAncestorLookup(ArrayList<String> locSigs, long resourceNodeId) {
-        StringBuilder sb = new StringBuilder("MATCH (r:RESOURCE)-[:HASLOCSIG]->(s:LOCALSIGNATURE) WHERE s.id IN [");
+        StringBuilder sb = new StringBuilder("MATCH (r:RESOURCE)-[:HASSYSNO]->(s:SYSNO) WHERE s.id IN [");
         int counter = 0;
         for (String e : locSigs) {
             if (counter > 0) {
@@ -188,11 +188,11 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
 
 
     private enum lsbLabels implements Label {
-        RESOURCE, PERSON, ORGANISATION, LOCALSIGNATURE, WORK, CREATE, DELETE, UPDATE
+        RESOURCE, PERSON, ORGANISATION, SYSNO, WORK, CREATE, DELETE, UPDATE
     }
 
     private enum lsbRelations implements RelationshipType {
-        HASORGANISATION, HASPERSON, HASLOCSIG, HASWORK, HASSUCCESSOR
+        HASORGANISATION, HASPERSON, HASSYSNO, HASWORK, HASSUCCESSOR
     }
 
 }

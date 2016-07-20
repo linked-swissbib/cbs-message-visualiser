@@ -12,7 +12,7 @@
 
         <data source="001" name="id"/>
 
-        <data source="035  .a" name="locsig">
+        <data source="035  .a" name="sysno">
             <regexp match="\((.*)\)(.*)" format="${1}/${2}"/>
             <unique part="value"/>
         </data>
