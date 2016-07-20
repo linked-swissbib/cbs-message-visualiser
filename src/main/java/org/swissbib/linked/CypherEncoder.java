@@ -29,7 +29,7 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     private ArrayList<String> locSigs = new ArrayList<>();
 
     void setAction(String action) {
-        this.action = action;
+        this.action = action.split("/")[3];
     }
 
     void setTimestamp(String timestamp) {
@@ -60,7 +60,7 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     public void startRecord(String s) {
         tx = graphDb.beginTx();
         Label actionLbl = null;
-        switch (action.split("/")[3]) {
+        switch (action) {
             case "delete":
                 actionLbl = lsbLabels.DELETE;
                 break;
@@ -79,19 +79,27 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     }
 
     public void endRecord() {
-        String id = getAncestor();
-        if (id != null) {
-            Node ancestor = graphDb.getNodeById(Long.parseLong(id));
-            ancestor.createRelationshipTo(resourceNode, lsbRelations.HASSUCCESSOR);
+        if (action.equals("replace") || action.equals("delete")) {
+            String id = getPredecessor();
+            if (id != null) {
+                Node related = graphDb.getNodeById(Long.parseLong(id));
+                resourceNode.createRelationshipTo(related, lsbRelations.SUCCEEDS);
+            }
+        } else {
+            String id = getAncestor();
+            if (id != null) {
+                Node related = graphDb.getNodeById(Long.parseLong(id));
+                resourceNode.createRelationshipTo(related, lsbRelations.INHERITS);
+            }
         }
         tx.success();
         tx.close();
         locSigs.clear();
     }
 
-
     /**
      * Depending on the key of the literal, a new node of some kind and a relation from the resource-node to it are created.
+     *
      * @param k Key of literal
      * @param v Value of literal
      */
@@ -120,10 +128,9 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                 break;
             case "title":
                 resourceNode.setProperty(k, v);
-                LOG.debug("Add property {}={} to resource-node {}", k, v, resourceNode.getId() );
+                LOG.debug("Add property {}={} to resource-node {}", k, v, resourceNode.getId());
                 break;
         }
-
     }
 
     /**
@@ -148,51 +155,71 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     }
 
     /**
-     * Returns the latest ancestor of the current resource-node.
-     * @return Id of the latest ancestor
+     * An inheritance is the assumption that a newly created/nominated master record partially "inherits" the content of
+     * a recently deleted one. To be a possible heir some requirements have to be fulfilled:
+     * - The ancestor node is labeled :DELETE
+     * - The CBS id of the two nodes are not the same
+     * - The local system numbers of the newly created/nominated master record and of possible other heirs of the recently
+     * deleted record do not intersect, assuming that a single record in CBS (master or slave) can't belong to more than
+     * one cluster at the same time.
+     * If there are several deleted nodes which match the mentioned criteria, only the latest is taken.
+     *
+     * @return Id of the latest relation or null
      */
     private String getAncestor() {
-        Result r = graphDb.execute(createCypherAncestorLookup(locSigs, resourceNode.getId()));
+        StringBuilder serializedSysNo = new StringBuilder();
+        int counter = 0;
+        for (String e : locSigs) {
+            if (counter > 0) {
+                serializedSysNo.append(",");
+            }
+            serializedSysNo.append("\"").append(e).append("\"");
+            counter++;
+        }
+        StringBuilder sb = new StringBuilder("MATCH (r:RESOURCE:DELETE)-[:HASSYSNO]->(s:SYSNO) WHERE s.id IN [");
+        sb.append(serializedSysNo)
+                .append("] AND id(r) <> ")
+                .append(resourceNode.getId())
+                .append(" OPTIONAL MATCH (r)<-[:INHERITS]-(x:RESOURCE:CREATE) WHERE NOT x.id in [")
+                .append("] RETURN id(r) ORDER BY id(r) DESC");
+        Result r = graphDb.execute(sb.toString());
+        LOG.trace("New cypher query for looking up the latest ancestor has been generated: {}", sb.toString());
+        String id;
+        if (r.hasNext()) {
+            id = r.next().get("id(r)").toString();
+            LOG.debug("A related node for resource-node {} has been found: {}", resourceNode.getId(), id);
+        } else {
+            id = null;
+            LOG.debug("No related node for resource-node {} has been found.", resourceNode.getId());
+        }
+        return id;
+    }
+
+    /**
+     * Returns the id of a node with same CBS id and no successor (i.e. a direct predecessor)
+     *
+     * @return Id of the ancestor or null
+     */
+    private String getPredecessor() {
+        Result r = graphDb.execute("MATCH (r:RESOURCE {id: '" + resourceNode.getId() +
+                "'}) WHERE NOT (r)-[:SUCCEEDS]->(:RESOURCE) RETURN id(r)");
         String id;
         if (r.hasNext()) {
             id = r.next().get("id(r)").toString();
             LOG.debug("An ancestor for resource-node {} has been found: {}", resourceNode.getId(), id);
         } else {
             id = null;
-            LOG.debug("No ancestor node for resource-node {} has been found.", resourceNode.getId());
+            LOG.debug("No ancestor for resource-node {} has been found.", resourceNode.getId());
         }
         return id;
     }
-
-    /**
-     * Returns the cypher query required to look up possible ancestors to resource-nodes.
-     * @param locSigs List of local signatures of the current node
-     * @return Query
-     */
-    static String createCypherAncestorLookup(ArrayList<String> locSigs, long resourceNodeId) {
-        StringBuilder sb = new StringBuilder("MATCH (r:RESOURCE)-[:HASSYSNO]->(s:SYSNO) WHERE s.id IN [");
-        int counter = 0;
-        for (String e : locSigs) {
-            if (counter > 0) {
-                sb.append(",");
-            }
-            sb.append("\"").append(e).append("\"");
-            counter++;
-        }
-        sb.append("] AND NOT (r)-[:HASSUCCESSOR]->() AND id(r) <> ");
-        sb.append(resourceNodeId);
-        sb.append(" RETURN id(r)");
-        LOG.trace("New cypher query for looking up the latest ancestor has been generated: {}", sb.toString());
-        return sb.toString();
-    }
-
 
     private enum lsbLabels implements Label {
         RESOURCE, PERSON, ORGANISATION, SYSNO, WORK, CREATE, DELETE, UPDATE
     }
 
     private enum lsbRelations implements RelationshipType {
-        HASORGANISATION, HASPERSON, HASSYSNO, HASWORK, HASSUCCESSOR
+        HASORGANISATION, HASPERSON, HASSYSNO, HASWORK, INHERITS, SUCCEEDS
     }
 
 }
