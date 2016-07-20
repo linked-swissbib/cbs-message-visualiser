@@ -19,7 +19,7 @@ public class CypherEncoderTest {
         ids.add("123");
         ids.add("456");
         String lookup = CypherEncoder.createCypherAncestorLookup(ids, 789l);
-        assertEquals("MATCH (r:RESOURCE)-[:HASLOCSIG]->(s:LOCALSIGNATURE) WHERE s.id IN [\"123\",\"456\"] AND NOT (r)-[:HASSUCCESSOR]->() AND id(r) <> 789 RETURN id(r)", lookup);
+        assertEquals("MATCH (r:RESOURCE)-[:HASSYSNO]->(s:SYSNO) WHERE s.id IN [\"123\",\"456\"] AND NOT (r)-[:HASSUCCESSOR]->() AND id(r) <> 789 RETURN id(r)", lookup);
     }
 
 }
