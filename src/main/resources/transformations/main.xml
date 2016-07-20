@@ -9,12 +9,15 @@
     <rules>
 
 
-
         <data source="001" name="id"/>
 
         <data source="035  .a" name="sysno">
             <regexp match="\((.*)\)(.*)" format="${1}/${2}"/>
             <unique part="value"/>
+            <blacklist>
+                <!-- The local system number Sz/000000000 is referred by far too much records to have any use as "anchor" for our tracking -->
+                <entry name="Sz/000000000"/>
+            </blacklist>
         </data>
 
         <data name="person" source="@key1000">
