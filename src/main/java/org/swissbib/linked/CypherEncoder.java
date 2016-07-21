@@ -27,6 +27,8 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     private Transaction tx;
     private Node resourceNode;
     private ArrayList<String> locSigs = new ArrayList<>();
+    private String nodeId;
+    private Boolean integrityCheck = true;
 
     void setAction(String action) {
         this.action = action.split("/")[3];
@@ -34,6 +36,10 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
 
     void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    void setIntegrityCheck(Boolean integrityCheck) {
+        this.integrityCheck = integrityCheck;
     }
 
     void setDbDir(String dbDir) {
@@ -53,11 +59,18 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
             graphDb.schema().constraintFor(lsbLabels.SYSNO).assertPropertyIsUnique("id").create();
         if (!graphDb.schema().getIndexes(lsbLabels.WORK).iterator().hasNext())
             graphDb.schema().constraintFor(lsbLabels.WORK).assertPropertyIsUnique("id").create();
+        if (integrityCheck) {
+            if (!graphDb.schema().getIndexes(lsbLabels.DELETE).iterator().hasNext())
+                graphDb.schema().constraintFor(lsbLabels.DELETE).assertPropertyIsUnique("id").create();
+            if (!graphDb.schema().getIndexes(lsbLabels.CREATE).iterator().hasNext())
+                graphDb.schema().constraintFor(lsbLabels.CREATE).assertPropertyIsUnique("id").create();
+        }
         tx.success();
         tx.close();
     }
 
     public void startRecord(String s) {
+        nodeId = s;
         tx = graphDb.beginTx();
         Label actionLbl = null;
         switch (action) {
@@ -68,14 +81,27 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                 actionLbl = lsbLabels.CREATE;
                 break;
             case "replace":
-                actionLbl = lsbLabels.UPDATE;
+                actionLbl = lsbLabels.REPLACE;
                 break;
             default:
                 break;
         }
         resourceNode = graphDb.createNode(lsbLabels.RESOURCE, actionLbl);
-        resourceNode.setProperty("id", s);
-        resourceNode.setProperty("time", timestamp);
+        try {
+            resourceNode.setProperty("id", s);
+            resourceNode.setProperty("time", timestamp);
+        } catch (ConstraintViolationException e) {
+            resourceNode.delete();
+            resourceNode = graphDb.findNode(actionLbl, "id", s);
+            switch(action) {
+                case "delete":
+                    LOG.warn("Integrity warning for record with id {}: An already deleted record can't be deleted a second time!", s);
+                    break;
+                case "create":
+                    LOG.warn("Integrity warning for record with id {}: An already created record can't be created a second time!", s);
+                    break;
+            }
+        }
     }
 
     public void endRecord() {
@@ -201,8 +227,8 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
      * @return Id of the ancestor or null
      */
     private String getPredecessor() {
-        Result r = graphDb.execute("MATCH (r:RESOURCE {id: '" + resourceNode.getId() +
-                "'}) WHERE NOT (r)-[:SUCCEEDS]->(:RESOURCE) RETURN id(r)");
+        Result r = graphDb.execute("MATCH (r:RESOURCE {id: '" + nodeId +
+                "'}) WHERE id(r) <> " + resourceNode.getId() + " AND NOT (r)<-[:SUCCEEDS]-(:RESOURCE) AND NOT r:DELETE RETURN id(r)");
         String id;
         if (r.hasNext()) {
             id = r.next().get("id(r)").toString();
@@ -215,7 +241,7 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
     }
 
     private enum lsbLabels implements Label {
-        RESOURCE, PERSON, ORGANISATION, SYSNO, WORK, CREATE, DELETE, UPDATE
+        RESOURCE, PERSON, ORGANISATION, SYSNO, WORK, CREATE, DELETE, REPLACE
     }
 
     private enum lsbRelations implements RelationshipType {
