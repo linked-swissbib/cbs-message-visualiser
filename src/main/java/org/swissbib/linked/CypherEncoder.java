@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author Sebastian Schüpbach
@@ -178,9 +179,7 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                                 // Remove relationships to nodes which have no relationship to new resource node. Additionally,
                                 // if a node has no relationships anymore, delete it.
                                 // FIXME: Old contributor nodes with a successor won't be deleted in the moment
-                                for (Node n : difference.get("right")) {
-                                    neighborsDel.add(n.getId());
-                                }
+                                neighborsDel.addAll(difference.get("right").stream().map(Node::getId).collect(Collectors.toList()));
                                 // Create relationships to new nodes
                                 for (Relationship relationship : resourceNode.getRelationships()) {
                                     neighborsNew.add(relationship.getEndNode().getId());
@@ -390,6 +389,16 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
      * @param ancestor Ancestor / predecessor resource node
      */
     private void relateAncestorContributors(Node ancestor, RelationshipType relaType) {
+        Function<Node, String> getNameProperty = n -> {
+            String contribName;
+            try {
+                contribName = n.getProperty("name").toString();
+            } catch (NotFoundException e) {
+                contribName = "";
+                LOG.warn("Could not get property name from node {} with CBS-id {}", n.getId(), n.getProperty("id"));
+            }
+            return contribName;
+        };
         HashSet<Node> ancestorNeighborNodes = new HashSet<>();
         HashMap<String, HashSet<Node>> ancestorChanges = new HashMap<>();
         for (Relationship r : ancestor.getRelationships(relaType)) {
@@ -411,8 +420,8 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                 while (iAncestor.hasNext()) {
                     Node oldContrib = iAncestor.next();
                     Double jwd = StringUtils.getJaroWinklerDistance(
-                            (newContrib.getProperty("name") == null ? "" : newContrib.getProperty("name").toString()),
-                            (oldContrib.getProperty("name") == null ? "" : oldContrib.getProperty("name").toString()));
+                            getNameProperty.apply(newContrib),
+                            getNameProperty.apply(oldContrib));
                     if (jwd >= maxJwd) {
                         mostSimilarNode = oldContrib;
                         maxJwd = jwd;
@@ -424,13 +433,13 @@ class CypherEncoder<T> extends DefaultStreamPipe<ObjectReceiver<T>> {
                         LOG.info("New contributor node with id={} and name={} is quite similar (Jaro-Winkler-Distance over {}" +
                                         " to outdated contributor node with id={} and name={}. It is supposed that" +
                                         " the new node is a successor of the old one.", newContrib.getProperty("id"), newContrib.getProperty("name"),
-                                jwdThreshold, mostSimilarNode.getProperty("id"), mostSimilarNode.getProperty("name"));
+                                jwdThreshold, mostSimilarNode.getProperty("id"), getNameProperty.apply(mostSimilarNode));
                     } else {
-                        if (commonWordsCoefficient(newContrib.getProperty("name").toString(), mostSimilarNode.getProperty("name").toString()) >= 0.9) {
+                        if (commonWordsCoefficient(getNameProperty.apply(newContrib), getNameProperty.apply(mostSimilarNode)) >= 0.9) {
                             newContrib.createRelationshipTo(mostSimilarNode, lsbRelations.INHERITS);
                             LOG.info("The name tokens of new contributor node with id={} are a subset of the one of the outdated contributor node (or vice versa)." +
                                     "Thus it is supposed that the new node is a successor of the old one");
-                            LOG.info("\"{}\",\"{}\",\"{}\"", newContrib.getProperty("name"), mostSimilarNode.getProperty("name"), 1.1);
+                            LOG.info("\"{}\",\"{}\",\"{}\"", getNameProperty.apply(newContrib), getNameProperty.apply(mostSimilarNode), 1.1);
                         }
                     }
                 }
