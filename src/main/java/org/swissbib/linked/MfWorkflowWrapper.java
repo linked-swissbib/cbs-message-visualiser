@@ -22,7 +22,7 @@ class MfWorkflowWrapper {
     private final CypherEncoder cypherEncoder = new CypherEncoder();
 
 
-    MfWorkflowWrapper(String metamorphDefinition, String neo4jDbDirectory) {
+    MfWorkflowWrapper(String metamorphDefinition, String neo4jDbDirectory, Byte density, Double jwd) {
 
         XmlDecoder xmlDecoder = new XmlDecoder();
         MarcXmlHandler marcHandler = new MarcXmlHandler();
@@ -30,6 +30,8 @@ class MfWorkflowWrapper {
         LOG.debug("Reading in Metamorph definition at {}", metamorphDefinition);
         Metamorph metamorph = new Metamorph(metamorphDefinition);
         LOG.debug("Setting Neo4j Embedded Database directory to {}", neo4jDbDirectory);
+        cypherEncoder.setDensity(density);
+        cypherEncoder.setJwdThreshold(jwd);
         cypherEncoder.setDbDir(neo4jDbDirectory);
 
         stringReader.setReceiver(xmlDecoder)

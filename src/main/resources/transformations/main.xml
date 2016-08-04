@@ -20,29 +20,77 @@
             </blacklist>
         </data>
 
-        <data name="person" source="@key1000">
-            <compose prefix="http://data.swissbib.ch/person/"/>
-        </data>
 
-        <data name="person" source="@key1001">
-            <compose prefix="http://data.swissbib.ch/person/"/>
-        </data>
+        <concat name="person" delimiter="##">
+            <data name="person" source="@key1000">
+                <compose prefix="http://data.swissbib.ch/person/"/>
+            </data>
+            <concat name="name1000" delimiter=" " flushWith="245??">
+                <data source="1000 .a" name="name"/>
+                <data source="1000 .q" name="fullname"/>
+            </concat>
+        </concat>
 
-        <data name="organisation" source="@key7000">
-            <compose prefix="http://data.swissbib.ch/person/"/>
-        </data>
+        <concat name="person" delimiter="##">
+            <data name="person" source="@key1001">
+                <compose prefix="http://data.swissbib.ch/person/"/>
+            </data>
+            <concat name="name1001" delimiter=" " flushWith="245??">
+                <data source="1001 .a" name="lastname"/>
+                <data source="1001 .D" name="firstname"/>
+                <data source="1001 .q" name="fullname"/>
+            </concat>
+        </concat>
 
-        <data name="organisation" source="@key7001">
-            <compose prefix="http://data.swissbib.ch/person/"/>
-        </data>
+        <concat name="organisation" delimiter="##">
+            <data name="organisation" source="@key7000">
+                <compose prefix="http://data.swissbib.ch/organisation/"/>
+            </data>
+            <concat name="name7000" delimiter=" " flushWith="7000 ">
+                <data source="7000 .a" name="name"/>
+                <data source="7000 .q" name="fullname"/>
+            </concat>
 
-        <data name="organisation" source="@key710">
-            <compose prefix="http://data.swissbib.ch/organisation/"/>
-        </data>
+        </concat>
 
-        <data name="organisation" source="@key711">
-            <compose prefix="http://data.swissbib.ch/organisation/"/>
-        </data>
+        <concat name="organisation" delimiter="##">
+            <data name="organisation" source="@key7001">
+                <compose prefix="http://data.swissbib.ch/organisation/"/>
+            </data>
+            <concat name="name7001" delimiter=" " flushWith="7001 ">
+                <data source="7001 .a" name="lastname"/>
+                <data source="7001 .D" name="firstname"/>
+                <data source="7001 .q" name="fullname"/>
+
+            </concat>
+        </concat>
+
+        <concat name="organisation" delimiter="##">
+            <data name="organisation" source="@key710">
+                <compose prefix="http://data.swissbib.ch/organisation/"/>
+            </data>
+            <concat name="name710" delimiter=" " flushWith="710??">
+                <data source="710??.a" name="name"/>
+                <data source="710??.b" name="subunit"/>
+                <data source="710??.n" name="number"/>
+                <data source="710??.d" name="date"/>
+                <data source="710??.c" name="location"/>
+            </concat>
+        </concat>
+
+        <concat name="organisation" delimiter="##">
+            <data name="organisation" source="@key711">
+                <compose prefix="http://data.swissbib.ch/organisation/"/>
+            </data>
+            <concat name="name711" delimiter=" " flushWith="711??">
+                <data source="711??.a" name="name"/>
+                <data source="711??.e" name="subunit"/>
+                <data source="711??.n" name="number"/>
+                <data source="711??.d" name="date"/>
+                <data source="711??.c" name="location"/>
+            </concat>
+
+        </concat>
 
         <concat name="title" delimiter="">
             <data source="245*.a"/>
